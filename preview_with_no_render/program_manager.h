@@ -4,6 +4,7 @@
 #include <fstream>
 #include <algorithm>
 #include <set>
+#include <map>
 #include <regex>
 
 class Program_Manager
@@ -18,18 +19,20 @@ private:
 	std::string str_sensor_name;
 	std::string str_resolution;
 	std::string str_frame_rate;
+	std::string str_format;
 	std::string str_duration_in_second;
 	std::set<std::string> set_supported_sensor;
 
 	bool Is_sensor_name_valid();
 	bool Is_resolution_valid();
 	bool Is_frame_rate_valid();
+	bool Is_format_valid();
 	bool Is_duration_valid();
 
 	CameraControl selected_sensor_control;
 
 public:
-	Program_Manager(char *ch_arg_0, char *ch_sensor_name, char *ch_resolution, char *ch_frame_rate, char *ch_duration);
+	Program_Manager(char *ch_arg_0, char *ch_sensor_name, char *ch_resolution, char *ch_frame_rate, char *ch_format, char *ch_duration);
 	void Start_Running();
 };
 #endif

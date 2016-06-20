@@ -11,12 +11,14 @@ Program_Manager::Program_Manager(
 	char *ch_sensor_name, 
 	char *ch_resolution, 
 	char *ch_frame_rate, 
+	char *ch_format,
 	char *ch_duration)
 {
 	this->str_arg_0 = ch_arg_0;
 	this->str_sensor_name = ch_sensor_name;
 	this->str_resolution = ch_resolution;
 	this->str_frame_rate = ch_frame_rate;
+	this->str_format = ch_format;
 	this->str_duration_in_second = ch_duration;
 }
 
@@ -95,6 +97,21 @@ bool Program_Manager::Is_frame_rate_valid()
 	return false;
 }
 
+bool Program_Manager::Is_format_valid()
+{
+	transform(this->str_format.begin(), this->str_format.end(), this->str_format.begin(), toupper);
+
+	if (!this->selected_sensor_control.Is_format_supported(str_format))
+	{
+		cout << "Input Checking Failed: " << this->str_format << " is not supported!" << endl
+			<< "Supported Format List:" << endl;
+		this->selected_sensor_control.display_supported_format();
+		return false;
+	}
+	cout << "Input Checking Successful: Format " << this->str_format << " Supported!" << endl;
+	return true;
+}
+
 bool Program_Manager::Is_duration_valid()
 {
 	string pattern("\\d+");
@@ -123,11 +140,13 @@ void Program_Manager::Start_Running()
 		&& this->Is_resolution_valid()
 		&& this->Is_frame_rate_valid()
 		&& this->Is_duration_valid()
+		&& this->Is_format_valid()
 		&& this->selected_sensor_control.Is_initialized(
 			this->str_sensor_name,
 			this->int_width,
 			this->int_height,
-			this->int_frame_rate))
+			this->int_frame_rate,
+			this->str_format))
 	{
 		thread camera_execution_thread(Start_Preview, &(this->selected_sensor_control));
 		//Start_Preview(&selected_sensor_control);

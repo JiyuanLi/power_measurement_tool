@@ -2,7 +2,7 @@
 #define CAMERA_CONTROL_H
 #include <iostream>
 #include <string>
-#include <vector>
+#include <map>
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
@@ -22,6 +22,8 @@
 class CameraControl: public IMFSourceReaderCallback
 {
 private:
+	std::map<std::string, GUID> subtype_mapping;
+
 	DeviceList				DeviceListObj;
 
 	long                    m_nRefCount;                        // Reference count.
@@ -33,7 +35,7 @@ private:
 	LONGLONG                m_llBaseTime;
 	WCHAR                   *m_pwszSymbolicLink;
 
-	HRESULT                 ConfigureSourceReader(long width, long height, int fps);
+	HRESULT                 ConfigureSourceReader(long width, long height, int fps, std::string format);
 	HRESULT                 EndCaptureInternal();
 	HRESULT                 CopyAttribute(IMFAttributes *pSrc, IMFAttributes *pDest, const GUID& key);
 public:
@@ -68,11 +70,10 @@ public:
 
 	// Other Methods
 	HRESULT                 OpenMediaSource(IMFActivate *pActivate);
-	HRESULT                 StartPreview(HWND hWindow, long width, long height, int fps);
-	HRESULT                 CheckDeviceLost(DEV_BROADCAST_HDR *pHdr, BOOL *pbDeviceLost);
-	HRESULT                 GetSupportResolutionList(std::vector<std::string> &vecResList);
 
-	bool					Is_initialized(std::string sensor_name, int width, int height, int fps);
+	bool					Is_initialized(std::string sensor_name, int width, int height, int fps, std::string format);
+	bool					Is_format_supported(std::string input_format);
+	void					display_supported_format();
 	int						preview_start();
 	int						preview_stop();
 };

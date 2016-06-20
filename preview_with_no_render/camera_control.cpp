@@ -16,6 +16,14 @@ m_llBaseTime(0),
 m_pwszSymbolicLink(NULL),
 CurrentState(State_Stop)
 {
+	subtype_mapping.insert({ 
+		{ "NV12", MFVideoFormat_NV12 },
+		{ "YUY2", MFVideoFormat_YUY2 },
+		{ "UYVY", MFVideoFormat_UYVY },
+		{ "RGB32", MFVideoFormat_RGB32 },
+		{ "RGB24", MFVideoFormat_RGB24 },
+		{ "IYUV", MFVideoFormat_IYUV }
+	});
 	InitializeCriticalSection(&m_critsec);
 }
 
@@ -26,12 +34,9 @@ CameraControl::~CameraControl()
 }
 
 // Configure the Resolution and fps of the Source Reader
-HRESULT CameraControl::ConfigureSourceReader(long width, long height, int fps)
+HRESULT CameraControl::ConfigureSourceReader(long width, long height, int fps, string format)
 {
-	GUID subtypes[] = {
-		MFVideoFormat_NV12, MFVideoFormat_YUY2, MFVideoFormat_UYVY,
-		MFVideoFormat_RGB32, MFVideoFormat_RGB24, MFVideoFormat_IYUV
-	};
+	const GUID required_subtype = this->subtype_mapping[format];
 
 	HRESULT hr = S_OK;
 	BOOL    bUseNativeType = FALSE;
@@ -58,58 +63,27 @@ HRESULT CameraControl::ConfigureSourceReader(long width, long height, int fps)
 		pSourceType->GetItem(MF_MT_FRAME_RATE, &varFPS);
 		int type_fps = static_cast<int>(ceil(double(varFPS.uhVal.HighPart) / double(varFPS.uhVal.LowPart)));
 
-		if (type_width == width&&type_height == height&&type_fps == fps)
+		// Get Format
+		subtype = { 0 };
+		pSourceType->GetGUID(MF_MT_SUBTYPE, &subtype);
+
+		// Check derived format 
+		if (type_width == width&&type_height == height&&type_fps == fps&&subtype == required_subtype)
 		{
 			typeIndex = typeCount;
+			hr = m_pReader->SetCurrentMediaType(
+				(DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+				NULL,
+				pSourceType
+				);
 			break;
 		}
 		SafeRelease(&pSourceType);
 		typeCount++;
 	}
 
-	if (typeIndex == -1) { hr = -1;  goto done; }
-
-	hr = pSourceType->GetGUID(MF_MT_SUBTYPE, &subtype);
-
-	if (FAILED(hr)) { goto done; }
-
-	for (UINT32 i = 0; i < ARRAYSIZE(subtypes); i++)
-	{
-		if (subtype == subtypes[i])
-		{
-			hr = m_pReader->SetCurrentMediaType(
-				(DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
-				NULL,
-				pSourceType
-				);
-
-			bUseNativeType = TRUE;
-			break;
-		}
-	}
-
-	if (!bUseNativeType)
-	{
-		cout << "Warning: Native Media Type is not in match media type list! Will choose one from the list instead" << endl;
-		for (UINT32 i = 0; i < ARRAYSIZE(subtypes); i++)
-		{
-			hr = pSourceType->SetGUID(MF_MT_SUBTYPE, subtypes[i]);
-
-			if (FAILED(hr)) { goto done; }
-
-			hr = m_pReader->SetCurrentMediaType(
-				(DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
-				NULL,
-				pSourceType
-				);
-
-			if (SUCCEEDED(hr))
-			{
-				break;
-			}
-		}
-	}
-
+	if (typeIndex == -1)
+		hr = -1;
 done:
 	SafeRelease(&pSourceType);
 	return hr;
@@ -238,23 +212,23 @@ HRESULT CameraControl::OnReadSample(
 		static bool has_fps_output = false;
 		static int fps_size = 0;
 		
-		if (frame_counter == 15)
+		if (frame_counter == 5)
 		{
 			if (has_fps_output)
 			{
 				for (int i = 0; i < fps_size; ++i)
 					cout << "\b";
 			}
-			LONGLONG time_difference = (llTimeStamp - first_frame_time_stamp)/15;
-			double int_fps = 1000 * 10000000 / time_difference;
-			double db_fps = double (int_fps) / 100;
-			cout << db_fps;
+			LONGLONG time_difference = (llTimeStamp - first_frame_time_stamp)/5;
+			double time_difference_in_ms = double(time_difference) / 10000.0;
+			double db_fps = 1000.0 / time_difference_in_ms;
+			ostringstream ost;
+			ost << db_fps;
+			cout << ost.str();
+			fps_size = ost.str().length();
 			has_fps_output = true;
 			frame_counter = 0;
 			first_frame_time_stamp = llTimeStamp;
-			ostringstream ost;
-			ost << db_fps;
-			fps_size = ost.str().length();
 		}
 		frame_counter++;
 	}
@@ -311,7 +285,7 @@ HRESULT CameraControl::OpenMediaSource(IMFActivate *pSelectedDevice)
 	return hr;
 }
 
-bool CameraControl::Is_initialized(string sensor_name, int width, int height, int fps)
+bool CameraControl::Is_initialized(string sensor_name, int width, int height, int fps, string format)
 {
 	/***************************** Open Selected Device *******************************/
 	IMFActivate *Device = NULL;
@@ -357,10 +331,10 @@ bool CameraControl::Is_initialized(string sensor_name, int width, int height, in
 		cout << "Error: Camera cannot be open!" << endl;
 		return false;
 	}
-	hr = this->ConfigureSourceReader(width, height, fps);
+	hr = this->ConfigureSourceReader(width, height, fps, format);
 	if (!SUCCEEDED(hr))
 	{
-		cout << "Error: " << width << "x" << height << "@" << fps << "fps is not supported!" << endl;
+		cout << "Error: " << width << "x" << height << "@" << fps << "fps_" << format << " is not supported!" << endl;
 		return false;
 	}
 	LeaveCriticalSection(&m_critsec);
@@ -372,10 +346,28 @@ bool CameraControl::Is_initialized(string sensor_name, int width, int height, in
 	return return_value;
 }
 
+bool CameraControl::Is_format_supported(string input_format)
+{
+	if (this->subtype_mapping.find(input_format) == this->subtype_mapping.end())
+	{
+		return false;
+	}
+	return true;
+}
+
+void CameraControl::display_supported_format()
+{
+	for (const auto &format_pair : this->subtype_mapping)
+	{
+		cout << format_pair.first << " ";
+	}
+	cout << endl;
+}
+
 int CameraControl::preview_start()
 { 
 	EnterCriticalSection(&m_critsec);
-	std::cout << "Preview has been started!" << std::endl; 
+	cout << "Preview has been started!" << endl; 
 	m_bFirstSample = TRUE;
 	m_llBaseTime = 0;
 	CurrentState = State_Start;
@@ -410,6 +402,6 @@ int CameraControl::preview_start()
 int CameraControl::preview_stop()
 { 
 	EndCaptureInternal();
-	std::cout << endl << "Preview has been stopped!" << std::endl; 
+	cout << endl << "Preview has been stopped!" << endl; 
 	return 0; 
 }
