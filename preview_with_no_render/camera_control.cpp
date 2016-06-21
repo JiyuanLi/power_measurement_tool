@@ -17,13 +17,61 @@ m_pwszSymbolicLink(NULL),
 CurrentState(State_Stop)
 {
 	subtype_mapping.insert({ 
-		{ "NV12", MFVideoFormat_NV12 },
-		{ "YUY2", MFVideoFormat_YUY2 },
-		{ "UYVY", MFVideoFormat_UYVY },
 		{ "RGB32", MFVideoFormat_RGB32 },
 		{ "RGB24", MFVideoFormat_RGB24 },
-		{ "IYUV", MFVideoFormat_IYUV }
+		{ "ARGB32", MFVideoFormat_ARGB32 },
+		{ "AI44", MFVideoFormat_AI44 },
+		{ "AYUV", MFVideoFormat_AYUV },
+		{ "YUY2", MFVideoFormat_YUY2 },
+		{ "YVYU", MFVideoFormat_YVYU },
+		{ "YVU9", MFVideoFormat_YVU9 },
+		{ "UYVY", MFVideoFormat_UYVY },
+		{ "NV11", MFVideoFormat_NV11 },
+		{ "NV12", MFVideoFormat_NV12 },
+		{ "YV12", MFVideoFormat_YV12 },
+		{ "I420", MFVideoFormat_I420 },
+		{ "IYUV", MFVideoFormat_IYUV },
+		{ "Y210", MFVideoFormat_Y210 },
+		{ "Y216", MFVideoFormat_Y216 },
+		{ "Y410", MFVideoFormat_Y410 },
+		{ "Y416", MFVideoFormat_Y416 },
+		{ "Y41P", MFVideoFormat_Y41P },
+		{ "Y41T", MFVideoFormat_Y41T },
+		{ "Y42T", MFVideoFormat_Y42T },
+		{ "P210", MFVideoFormat_P210 },
+		{ "P216", MFVideoFormat_P216 },
+		{ "P010", MFVideoFormat_P010 },
+		{ "P016", MFVideoFormat_P016 },
+		{ "V210", MFVideoFormat_v210 },
+		{ "V216", MFVideoFormat_v216 },
+		{ "V410", MFVideoFormat_v410 },
+		{ "MP43", MFVideoFormat_MP43 },
+		{ "MP4S", MFVideoFormat_MP4S },
+		{ "MP4S2", MFVideoFormat_M4S2 },
+		{ "MP4V", MFVideoFormat_MP4V },
+		{ "WMV1", MFVideoFormat_WMV1 },
+		{ "WMV2", MFVideoFormat_WMV2 },
+		{ "WMV3", MFVideoFormat_WMV3 },
+		{ "WVC1", MFVideoFormat_WVC1 },
+		{ "MSS1", MFVideoFormat_MSS1 },
+		{ "MSS2", MFVideoFormat_MSS2 },
+		{ "MPG1", MFVideoFormat_MPG1 },
+		{ "DVSL", MFVideoFormat_DVSL },
+		{ "DVSD", MFVideoFormat_DVSD },
+		{ "DVHD", MFVideoFormat_DVHD },
+		{ "DV25", MFVideoFormat_DV25 },
+		{ "DV50", MFVideoFormat_DV50 },
+		{ "DVH1", MFVideoFormat_DVH1 },
+		{ "DVC", MFVideoFormat_DVC },
+		{ "H264", MFVideoFormat_H264 },
+		{ "MJPG", MFVideoFormat_MJPG },
+		{ "4200", MFVideoFormat_420O },
+		{ "HEVC", MFVideoFormat_HEVC },
+		{ "HEVS", MFVideoFormat_HEVC_ES }
 	});
+
+	m_streamIndex = 1;
+
 	InitializeCriticalSection(&m_critsec);
 }
 
@@ -45,9 +93,21 @@ HRESULT CameraControl::ConfigureSourceReader(long width, long height, int fps, s
 
 	IMFMediaType *pSourceType = NULL;
 
+	// Set stream
+	if (!SUCCEEDED(hr = this->m_pReader->SetStreamSelection(0, false)))
+	{
+		cout << "Error: Cannot deselect stream 0!" << endl;
+		goto done;
+	}
+	if (!SUCCEEDED(hr = this->m_pReader->SetStreamSelection(this->m_streamIndex, true)))
+	{
+		cout << "Error: Cannot select stream " << this->m_streamIndex << endl;
+		goto done;
+	}
+
 	int typeIndex = -1;
 	int typeCount = 0;
-	while (SUCCEEDED(hr = m_pReader->GetNativeMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, typeCount, &pSourceType)))
+	while (SUCCEEDED(hr = m_pReader->GetNativeMediaType(this->m_streamIndex, typeCount, &pSourceType)))
 	{
 		PROPVARIANT varRes;
 		PROPVARIANT varFPS;
@@ -72,7 +132,7 @@ HRESULT CameraControl::ConfigureSourceReader(long width, long height, int fps, s
 		{
 			typeIndex = typeCount;
 			hr = m_pReader->SetCurrentMediaType(
-				(DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+				this->m_streamIndex,
 				NULL,
 				pSourceType
 				);
@@ -198,6 +258,8 @@ HRESULT CameraControl::OnReadSample(
 	{
 		if (m_bFirstSample)
 		{
+			cout << "First Sample Ready!" << endl
+				<< "Frame Rate: " << endl;
 			m_llBaseTime = llTimeStamp;
 			m_bFirstSample = FALSE;
 		}
@@ -243,7 +305,7 @@ HRESULT CameraControl::OnReadSample(
 
 	// Read another sample.
 	hr = m_pReader->ReadSample(
-		(DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+		this->m_streamIndex,
 		0,
 		NULL,   // actual
 		NULL,   // flags
@@ -367,13 +429,13 @@ void CameraControl::display_supported_format()
 int CameraControl::preview_start()
 { 
 	EnterCriticalSection(&m_critsec);
-	cout << "Preview has been started!" << endl; 
+	cout << "Camera has been started!" << endl; 
 	m_bFirstSample = TRUE;
 	m_llBaseTime = 0;
 	CurrentState = State_Start;
 
 	IMFMediaType *pSourceReaderType = NULL;
-	m_pReader->GetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pSourceReaderType);
+	m_pReader->GetCurrentMediaType(this->m_streamIndex, &pSourceReaderType);
 	if (pSourceReaderType == NULL)
 	{
 		cout << "Error: Media Type was set unsuccessfully on Media Source!" << endl;
@@ -383,7 +445,7 @@ int CameraControl::preview_start()
 	// Request the first video frame.
 	HRESULT hr = S_OK;
 	hr = this->m_pReader->ReadSample(
-		(DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+		this->m_streamIndex,
 		0,
 		NULL,
 		NULL,
@@ -393,8 +455,6 @@ int CameraControl::preview_start()
 	bool return_val = false;
 	if (!SUCCEEDED(hr))
 		cout << "Error: Read Sample Failed!" << endl;
-	else
-		cout << "Frame Rate: " << endl;
 	LeaveCriticalSection(&m_critsec);
 	return 0; 
 }
@@ -402,6 +462,6 @@ int CameraControl::preview_start()
 int CameraControl::preview_stop()
 { 
 	EndCaptureInternal();
-	cout << endl << "Preview has been stopped!" << endl; 
+	cout << endl << "Camera has been stopped!" << endl; 
 	return 0; 
 }

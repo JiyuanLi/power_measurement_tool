@@ -1,10 +1,9 @@
-﻿生成启动时间为 2016/6/21 0:45:04。
+﻿生成启动时间为 2016/6/21 22:36:38。
      1>项目“C:\Projects\preview_with_no_render\preview_with_no_render\preview_with_no_render.vcxproj”在节点 2 上(Build 个目标)。
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt camera_control.cpp
          camera_control.cpp
-     1>c:\projects\preview_with_no_render\preview_with_no_render\camera_control.cpp(87): warning C4102: “done”: 未引用的标签
-     1>c:\projects\preview_with_no_render\preview_with_no_render\camera_control.cpp(300): warning C4018: “<”: 有符号/无符号不匹配
+     1>c:\projects\preview_with_no_render\preview_with_no_render\camera_control.cpp(362): warning C4018: “<”: 有符号/无符号不匹配
      1>c:\program files (x86)\microsoft visual studio 12.0\vc\include\xutility(2045): warning C4244: “=”: 从“wchar_t”转换到“char”，可能丢失数据
                  c:\program files (x86)\microsoft visual studio 12.0\vc\include\xutility(2066): 参见对正在编译的函数 模板 实例化“_OutIt std::_Copy_impl<_InIt,_OutIt>(_InIt,_InIt,_OutIt,std::_Nonscalar_ptr_iterator_tag)”的引用
                  with
@@ -30,7 +29,7 @@
                      _OutIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>
          ,            _InIt=wchar_t *
                  ]
-                 c:\projects\preview_with_no_render\preview_with_no_render\camera_control.cpp(306): 参见对正在编译的函数 模板 实例化“_OutIt std::copy<std::_String_iterator<std::_String_val<std::_Simple_types<wchar_t>>>,std::_String_iterator<std::_String_val<std::_Simple_types<char>>>>(_InIt,_InIt,_OutIt)”的引用
+                 c:\projects\preview_with_no_render\preview_with_no_render\camera_control.cpp(368): 参见对正在编译的函数 模板 实例化“_OutIt std::copy<std::_String_iterator<std::_String_val<std::_Simple_types<wchar_t>>>,std::_String_iterator<std::_String_val<std::_Simple_types<char>>>>(_InIt,_InIt,_OutIt)”的引用
                  with
                  [
                      _OutIt=std::_String_iterator<std::_String_val<std::_Simple_types<char>>>
@@ -46,4 +45,4 @@
 
 生成成功。
 
-已用时间 00:00:01.83
+已用时间 00:00:02.04

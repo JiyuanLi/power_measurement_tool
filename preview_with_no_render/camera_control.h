@@ -24,6 +24,8 @@ class CameraControl: public IMFSourceReaderCallback
 private:
 	std::map<std::string, GUID> subtype_mapping;
 
+	DWORD					m_streamIndex;
+
 	DeviceList				DeviceListObj;
 
 	long                    m_nRefCount;                        // Reference count.
